@@ -32,7 +32,10 @@ const registrationSchema = new mongoose.Schema({
     college: String,
     registrationType: String,
     amount: Number,
-    transactionId: String,
+    transactionId: { 
+        type: String,
+        unique: true
+    },
     uid: {
         type: String,
         unique: true // Ensure uniqueness
