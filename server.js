@@ -20,7 +20,6 @@ app.get("/register", (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'payment.html'));
 });
 
-
 mongoose.connect(process.env.MONGOURL, { useNewUrlParser: true, useUnifiedTopology: true });
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'MongoDB connection error:'));
@@ -32,7 +31,7 @@ const registrationSchema = new mongoose.Schema({
     college: String,
     registrationType: String,
     amount: Number,
-    transactionId: { 
+    transactionId: {
         type: String,
         unique: true
     },
@@ -70,6 +69,14 @@ registrationSchema.pre('save', async function(next) {
 
 const Registration = mongoose.model('Registration', registrationSchema);
 
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.USER,
+        pass: process.env.PASS
+    }
+});
+
 app.post('/register', async (req, res) => {
     try {
         const newRegistration = new Registration({
@@ -104,7 +111,6 @@ app.post('/register', async (req, res) => {
                 We eagerly anticipate your presence and active participation at the Karnataka State OMR UG Conference-2024.
             `
         };
-        
 
         transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
@@ -114,21 +120,30 @@ app.post('/register', async (req, res) => {
             }
         });
 
-        res.sendFile(path.join(__dirname, 'views', 'index.html'));
+        // Registration successful, send response with success alert
+        res.send(`
+            <script>
+                alert("User registration successful! Please check your email for confirmation.");
+                window.location.href = '/';
+            </script>
+        `);
     } catch (error) {
-        console.error('Error processing registration:', error);
-        res.status(500).send('Error processing registration');
-    }
-});
-
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user:process.env.USER,
-        pass:process.env.PASS
+        if (error.code === 11000 && error.keyPattern.transactionId === 1) {
+            // Duplicate transactionId error, send response with alert
+            res.send(`
+                <script>
+                    alert("Transaction ID already used for registration. Please check your email for confirmation. For further details, Contact  91139 99625 ");
+                    window.location.href = '/';
+                </script>
+            `);
+        } else {
+            // Other errors
+            console.error('Error processing registration:', error);
+            res.status(500).send('Error processing registration');
+        }
     }
 });
 
 app.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`);
+    console.log("Server is running on http://localhost:${port}");
 });
